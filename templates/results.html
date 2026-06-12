@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang='en'>
+
+<head>
+  <meta charset='UTF-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+  <title>Results – {{ query }} | AI Recommender</title>
+  <meta name="description" content="AI-powered product comparison results.">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel='stylesheet' href='{{ url_for("static", filename="style.css") }}'>
+  <script src='{{ url_for("static", filename="script.js") }}' defer></script>
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+    }
+
+    /* Reusable Glass Card from style.css is used, but keeping internal tweaks if needed */
+    .stat-card {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-radius: 18px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+      padding: 24px;
+    }
+
+    /* Platform color badges */
+    .ptag-amazon {
+      background: rgba(255, 153, 0, .15);
+      color: #ff9900;
+      border: 1px solid rgba(255, 153, 0, .3);
+    }
+
+    .ptag-flipkart {
+      background: rgba(47, 116, 255, .15);
+      color: #2f74ff;
+      border: 1px solid rgba(47, 116, 255, .3);
+    }
+
+    .ptag-myntra {
+      background: rgba(255, 63, 108, .15);
+      color: #ff3f6c;
+      border: 1px solid rgba(255, 63, 108, .3);
+    }
+
+    /* Score progress bar */
+    .score-bar-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+    }
+
+    .score-bar {
+      flex: 1;
+      height: 8px;
+      border-radius: 99px;
+      background: rgba(255, 255, 255, .05);
+      overflow: hidden;
+    }
+
+    .score-bar-fill {
+      height: 100%;
+      border-radius: 99px;
+      background: linear-gradient(90deg, #00C9FF, #6C63FF);
+      transition: width 1.2s cubic-bezier(.4, 0, .2, 1);
+    }
+
+    /* View-deal button (table) */
+    .deal-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.6rem 1.2rem;
+      background: linear-gradient(135deg, #6C63FF, #FF6FD8);
+      color: #fff;
+      text-decoration: none;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      white-space: nowrap;
+      transition: 0.3s ease;
+      box-shadow: 0 4px 15px rgba(108, 99, 255, 0.2);
+    }
+
+    .deal-btn:hover {
+      transform: translateY(-2px) scale(1.05);
+      box-shadow: 0 0 25px rgba(255, 111, 216, 0.7);
+    }
+
+    .deal-btn.search {
+      background: linear-gradient(135deg, #6C63FF, #FF6FD8);
+    }
+
+    /* Top-pick hero buy button */
+    .buy-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+      padding: 1rem 2.5rem;
+      background: linear-gradient(135deg, #6C63FF, #FF6FD8);
+      color: #fff;
+      text-decoration: none;
+      border-radius: 12px;
+      font-size: 1.15rem;
+      font-weight: 600;
+      transition: 0.3s ease;
+      box-shadow: 0 4px 15px rgba(108, 99, 255, 0.2);
+    }
+
+    .buy-btn:hover {
+      transform: translateY(-2px) scale(1.05);
+      box-shadow: 0 0 25px rgba(255, 111, 216, 0.7);
+    }
+
+    .buy-btn.search-fallback {
+      background: linear-gradient(135deg, #6C63FF, #FF6FD8);
+    }
+
+    /* KPI Cards (Stats bar) */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.5rem;
+      margin-top: 2rem;
+      margin-bottom: 3.5rem;
+    }
+
+    .stat-card {
+      border: 1px solid rgba(255, 255, 255, .05);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      transition: 0.3s ease;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-5px);
+      background: rgba(30, 41, 59, 0.6);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+    }
+
+    .stat-icon {
+      width: 50px;
+      height: 50px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .stat-card:nth-child(1) .stat-icon {
+      color: #38bdf8;
+      background: rgba(56, 189, 248, .1);
+    }
+
+    .stat-card:nth-child(2) .stat-icon {
+      color: #fbbf24;
+      background: rgba(251, 191, 36, .1);
+    }
+
+    .stat-card:nth-child(3) .stat-icon {
+      color: #34d399;
+      background: rgba(52, 211, 153, .1);
+    }
+
+    .stat-card:nth-child(4) .stat-icon {
+      color: #c084fc;
+      background: rgba(192, 132, 252, .1);
+    }
+
+    .stat-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .stat-label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      opacity: 0.7;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 0.2rem;
+    }
+
+    .stat-value {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    /* Section heading */
+    .section-heading {
+      font-size: 22px;
+      font-weight: bold;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .section-heading::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, rgba(255, 255, 255, .1), transparent);
+    }
+
+    /* Top Pick Card Enhanced */
+    .best-product {
+      background: linear-gradient(135deg, rgba(108, 99, 255, 0.9), rgba(0, 201, 255, 0.9));
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      position: relative;
+      box-shadow: 0 0 50px rgba(0, 200, 255, 0.6);
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      margin-bottom: 40px;
+      color: white;
+    }
+
+    .best-product:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 0 40px rgba(108, 99, 255, 0.8);
+    }
+
+    /* Animated border glow */
+    .best-product::after {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      border-radius: 26px;
+      background: linear-gradient(45deg, #6C63FF, #ec4899, #00C9FF, #6C63FF);
+      background-size: 300%;
+      z-index: -1;
+      filter: blur(10px);
+      opacity: 0.5;
+      animation: animeGradient 6s linear infinite;
+    }
+
+    @keyframes animeGradient {
+      0% {
+        background-position: 0% 50%;
+      }
+
+      50% {
+        background-position: 100% 50%;
+      }
+
+      100% {
+        background-position: 0% 50%;
+      }
+    }
+
+    .top-pick-badge {
+      position: absolute;
+      top: 1.5rem;
+      right: 2rem;
+      background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%);
+      color: #d61a5e;
+      padding: 0.6rem 1.8rem;
+      border-radius: 100px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      box-shadow: 0 4px 15px rgba(236, 72, 153, 0.3);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Avatar ring */
+    .avatar-ring {
+      border: 3px solid transparent;
+      background: linear-gradient(rgba(15, 23, 42, .8), rgba(15, 23, 42, .8)) padding-box,
+        linear-gradient(135deg, #6C63FF, #00C9FF) border-box;
+      border-radius: 20px;
+      padding: 0.75rem;
+      box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5), 0 0 15px rgba(108, 99, 255, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .avatar-ring img {
+      border-radius: 14px;
+      width: 100%;
+      max-height: 240px;
+      object-fit: contain;
+    }
+
+    /* Product Details Grid */
+    .product-details-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 1rem;
+    }
+
+    .detail-item {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 16px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    /* Table enhancements */
+    .table-container {
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+      overflow: hidden;
+      margin-bottom: 4rem;
+    }
+
+    .product-table th {
+      background: rgba(15, 23, 42, 0.8);
+      padding: 1.5rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.85rem;
+      letter-spacing: 1px;
+    }
+
+    .product-table td {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+      vertical-align: middle;
+    }
+
+    .product-table tbody tr {
+      transition: all 0.3s ease;
+    }
+
+    .product-table tbody tr:nth-child(even) td {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .product-table tbody tr:hover td {
+      background: rgba(108, 99, 255, 0.15);
+      transform: scale(1.01);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .rank-pill {
+      background: rgba(255, 255, 255, 0.1);
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .product-table .top-row td:first-child {
+      border-left: 4px solid #6C63FF;
+    }
+
+    /* Alignment */
+    .main-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .results-header {
+      width: 100%;
+      text-align: left;
+    }
+  </style>
+</head>
+
+<body data-theme="light">
+  <div class='container' style="animation: fadeIn 0.8s ease-out;">
+
+    <!-- Navbar -->
+    <nav class="navbar" style="margin-bottom: 2.5rem; padding-left: 0; padding-right: 0;">
+      <div class="nav-logo">
+        <i class="fas fa-shopping-bag text-purple"></i> AI Product <span class="text-blue">Recommender</span>
+      </div>
+      <div class="nav-links">
+        <a href="/" class="nav-link"><i class="fas fa-home"></i> Home</a>
+        <a href="/dashboard" class="nav-link"><i class="fas fa-th-large"></i> Dashboard</a>
+        <a href="/history" class="nav-link"><i class="fas fa-history"></i> History</a>
+        <a href="/saved" class="nav-link"><i class="far fa-heart"></i> Saved</a>
+      </div>
+      <div class="nav-actions">
+        <a href="/" class="gradient-btn ripple-btn" style="padding: 0.6rem 1.5rem; font-size: 0.9rem;"><i class="fas fa-search"></i> New Search</a>
+        <div class="icon-circle" data-theme-toggle><i class="far fa-moon"></i></div>
+        <div class="avatar-circle">
+          <img src="https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff" alt="User Avatar">
+        </div>
+      </div>
+    </nav>
+
+    <!-- ── Header ─────────────────────────────────────── -->
+    <a href='/' class='back-btn' style="margin-bottom:1.5rem; display:inline-flex; align-items:center; gap:8px;"><i class="fas fa-arrow-left"></i>
+      Back to Search</a>
+
+    {% if not products %}
+    <div class="glass-card" style="text-align:center; padding:6rem 2rem; margin-bottom:4rem;">
+      <div
+        style="width:100px; height:100px; background:rgba(255,255,255,0.03); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 2rem;">
+        <i class="fas fa-search-minus" style="font-size:3rem; color:rgba(255,255,255,0.1);"></i>
+      </div>
+      <h2 style="font-size:2.2rem; font-weight:700; margin-bottom:1rem; color:white;">No products found</h2>
+      <p
+        style="opacity:0.7; margin-bottom:3rem; max-width:600px; margin-left:auto; margin-right:auto; font-size:1.1rem; line-height:1.6;">
+        We searched multiple platforms but couldn't find a match for "<strong>{{ query }}</strong>". This might be due
+        to platform restrictions or specific keywords.</p>
+
+      <div style="display:flex; justify-content:center; gap:1.5rem; margin-bottom:3rem;">
+        <div
+          style="text-align:left; background:rgba(255,255,255,0.03); padding:1.5rem; border-radius:16px; border:1px solid rgba(255,255,255,0.05); flex:1; max-width:250px;">
+          <h4 style="margin:0 0 0.8rem; font-size:0.9rem; color:#60a5fa;"><i class="fas fa-lightbulb"></i> Pro Tips</h4>
+          <ul
+            style="padding:0; margin:0; list-style:none; font-size:0.85rem; color:#94a3b8; display:flex; flex-direction:column; gap:0.5rem;">
+            <li>• Use broader keywords</li>
+            <li>• Check for spelling errors</li>
+            <li>• Try removing brand names</li>
+          </ul>
+        </div>
+        <div
+          style="text-align:left; background:rgba(255,255,255,0.03); padding:1.5rem; border-radius:16px; border:1px solid rgba(255,255,255,0.05); flex:1; max-width:250px;">
+          <h4 style="margin:0 0 0.8rem; font-size:0.9rem; color:#ec4899;"><i class="fas fa-fire"></i> Popular Now</h4>
+          <ul
+            style="padding:0; margin:0; list-style:none; font-size:0.85rem; color:#94a3b8; display:flex; flex-direction:column; gap:0.5rem;">
+            <li>• Wireless Earbuds</li>
+            <li>• Gaming Laptops</li>
+            <li>• Smart Watches</li>
+          </ul>
+        </div>
+      </div>
+
+      <a href="/" class="buy-btn"
+        style="padding:1.2rem 3.5rem; border-radius:30px; font-size:1.1rem; font-weight:700; background:linear-gradient(135deg, #a855f7, #ec4899); text-decoration:none;">Try
+        a New Search</a>
+    </div>
+    {% else %}
+    <div class="results-header" style="display:flex; justify-content:space-between; align-items:flex-end;">
+      <div>
+        <h1 style="margin-bottom:0.5rem; font-size: 2.2rem; display:flex; align-items:center; gap:10px;">
+          Analysis for <span style="color:#00C9FF;">{{ query }}</span>
+        </h1>
+        <p style="opacity: 0.7; font-size: 1.1rem; margin-top:0;">We analyzed {{ products|length }} products across top
+          platforms to find you the best deals.</p>
+      </div>
+      <div style="text-align:right; font-size:0.85rem; opacity:0.6;">
+        <div>Search ID: #{{ query[:4]|upper }}{{ range(1000, 9999) | random }}</div>
+        <div>Updated just now</div>
+      </div>
+    </div>
+
+    <!-- Quick stats (KPI Cards) -->
+    <div class="stats-bar">
+      <div class="stat-card">
+        <div class="stat-icon"><i class="fas fa-chart-bar"></i></div>
+        <div class="stat-info">
+          <span class="stat-label">Products Analyzed</span>
+          <span class="stat-value">{{ total }}</span>
+        </div>
+      </div>
+      {% if best_product %}
+      <div class="stat-card">
+        <div class="stat-icon"><i class="fas fa-star"></i></div>
+        <div class="stat-info">
+          <span class="stat-label">Best AI Score</span>
+          <span class="stat-value">{{ best_product.final_score }}</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon"><i class="fas fa-tag"></i></div>
+        <div class="stat-info">
+          <span class="stat-label">Best Price</span>
+          <span class="stat-value price">{% if best_product.price %}<i class="fas fa-rupee-sign"
+              style="font-size:0.8em; opacity:0.8;"></i>{{ "{:,.0f}".format(best_product.price) }}{% else %}N/A{% endif
+            %}</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon"><i class="fas fa-trophy"></i></div>
+        <div class="stat-info">
+          <span class="stat-label">Top Platform</span>
+          <span class="stat-value">{{ best_product.platform }}</span>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- ── Advanced AI Insight ───────────────────────────────── -->
+    {% if insight %}
+    <div class="glass-card" style="margin-top:2rem; padding:1.75rem; border:1px solid rgba(255,255,255,0.08);">
+      <div style="display:flex; flex-wrap:wrap; gap:1rem; justify-content:space-between; align-items:center;">
+        <div>
+          <h2 style="margin:0 0 0.5rem 0; font-size:1.8rem; color:#fff;">{{ insight.headline }}</h2>
+          <p style="margin:0; opacity:0.75; max-width:680px; line-height:1.7;">{{ insight.summary }}</p>
+        </div>
+        <div style="display:grid; gap:0.75rem; text-align:right; min-width:220px;">
+          <div style="background:rgba(255,255,255,0.05); padding:1rem; border-radius:14px; border:1px solid rgba(255,255,255,0.08);">
+            <div style="font-size:0.75rem; opacity:0.7; text-transform:uppercase; letter-spacing:1px; margin-bottom:0.35rem;">Avg. AI Score</div>
+            <div style="font-size:1.45rem; font-weight:700; color:#38bdf8;">{{ insight.average_score }}</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.05); padding:1rem; border-radius:14px; border:1px solid rgba(255,255,255,0.08);">
+            <div style="font-size:0.75rem; opacity:0.7; text-transform:uppercase; letter-spacing:1px; margin-bottom:0.35rem;">Best Discount</div>
+            <div style="font-size:1.45rem; font-weight:700; color:#34d399;">{{ insight.best_discount }}% </div>
+          </div>
+          <div style="background:rgba(255,255,255,0.05); padding:1rem; border-radius:14px; border:1px solid rgba(255,255,255,0.08);">
+            <div style="font-size:0.75rem; opacity:0.7; text-transform:uppercase; letter-spacing:1px; margin-bottom:0.35rem;">Top Rating</div>
+            <div style="font-size:1.45rem; font-weight:700; color:#fbbf24;">{{ insight.best_rating }}/5</div>
+          </div>
+        </div>
+      </div>
+      {% if insight.platforms %}
+      <div style="margin-top:1.5rem; display:flex; flex-wrap:wrap; gap:0.75rem; align-items:center;">
+        <span style="font-size:0.85rem; color:#94a3b8;">Platforms covered:</span>
+        {% for platform in insight.platforms %}
+        <span style="font-size:0.85rem; padding:0.55rem 0.95rem; background:rgba(255,255,255,0.06); border-radius:999px; color:#fff; border:1px solid rgba(255,255,255,0.08);">{{ platform }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- ── Top-Pick Card ───────────────────────────────── -->
+    {% if best_product %}
+    <div class='best-product glass-card'>
+      <div class="top-pick-badge"><i class="fas fa-crown"></i> Top Pick</div>
+
+      <div class="best-product-content" style="display:flex; gap:2rem; align-items:stretch; flex-wrap:wrap;">
+
+        <!-- Avatar -->
+        <div class="avatar-ring"
+          style="flex:0 0 240px; min-height:240px; height:240px; background: white; border-radius: 16px; padding: 10px; display:flex; align-items:center; justify-content:center;">
+          <img src="{{ best_product.image }}" alt="{{ best_product.name }}"
+            onerror="this.src='https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=400&q=80'"
+            style="border-radius: 8px; object-fit: contain; max-width: 100%; max-height: 100%; box-shadow: 0 0 20px rgba(0,0,0,0.1);">
+        </div>
+
+        <!-- Details -->
+        <div class="best-details"
+          style="flex:1; min-width:300px; display:flex; flex-direction:column; justify-content:space-between;">
+          <div>
+            <h2 style="font-size: 2rem; margin:0 0 0.5rem 0; font-weight:700; color: #fff;">
+              {{ best_product.name }} <span style="font-weight:400; opacity:0.7;">on {{ best_product.platform }}</span>
+            </h2>
+            <div
+              style="color:#60a5fa; font-weight:500; font-size:0.95rem; display:flex; align-items:center; gap:0.5rem; margin-bottom:1.5rem; background:rgba(96, 165, 250, 0.1); padding:0.5rem 1rem; border-radius:8px; border-left:3px solid #60a5fa;">
+              <i class="fas fa-robot"></i> <span><strong>AI Verdict:</strong> {{ best_product.explanation }}</span>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:1rem; flex-wrap:wrap; margin-bottom:1.5rem;">
+            <div class="detail-item"
+              style="background:rgba(255,255,255,0.05); padding:1rem; border-radius:12px; flex:1; min-width:120px;">
+              <span class="detail-label"
+                style="opacity:0.7; font-size:0.75rem; text-transform:uppercase; letter-spacing:1px; display:block; margin-bottom:0.4rem;">Platform</span>
+              <span class="detail-value" style="font-size:1.1rem; font-weight:600;"><i class="fas fa-store"
+                  style="color:#fbbf24; margin-right:5px;"></i>{{ best_product.platform }}</span>
+            </div>
+            <div class="detail-item"
+              style="background:rgba(255,255,255,0.05); padding:1rem; border-radius:12px; flex:1; min-width:120px;">
+              <span class="detail-label"
+                style="opacity:0.7; font-size:0.75rem; text-transform:uppercase; letter-spacing:1px; display:block; margin-bottom:0.4rem;">Price</span>
+              <span class="detail-value price" style="font-size:1.4rem; color:#34d399; font-weight:700;">
+                {% if best_product.price %}
+                <i class="fas fa-rupee-sign" style="font-size:.8em;"></i> {{ "{:,.0f}".format(best_product.price) }}
+                {% else %}
+                <span style="color:#f87171; font-size:1rem;">N/A</span>
+                {% endif %}
+              </span>
+            </div>
+            <div class="detail-item"
+              style="background:rgba(255,255,255,0.05); padding:1rem; border-radius:12px; flex:1; min-width:120px;">
+              <span class="detail-label"
+                style="opacity:0.7; font-size:0.75rem; text-transform:uppercase; letter-spacing:1px; display:block; margin-bottom:0.4rem;">Rating</span>
+              <span class="detail-value" style="font-size:1.2rem; font-weight:700; color:#fbbf24;">
+                <i class="fas fa-star" style="font-size:.8em;"></i> {{ best_product.rating }}/5
+              </span>
+            </div>
+            <div class="detail-item"
+              style="background:rgba(255,255,255,0.05); padding:1rem; border-radius:12px; flex:1; min-width:120px;">
+              <span class="detail-label"
+                style="opacity:0.7; font-size:0.75rem; text-transform:uppercase; letter-spacing:1px; display:block; margin-bottom:0.4rem;">Sentiment</span>
+              <span class="detail-value" style="font-size:1.1rem; font-weight:600; color:#34d399;">
+                <i class="fas fa-smile" style="margin-right:5px;"></i>{{ best_product.sentiment_label }}
+              </span>
+            </div>
+            <div class="detail-item"
+              style="background:rgba(255,255,255,0.05); padding:1rem; border-radius:12px; flex:1; min-width:120px;">
+              <span class="detail-label"
+                style="opacity:0.7; font-size:0.75rem; text-transform:uppercase; letter-spacing:1px; display:block; margin-bottom:0.4rem;">Trust Level</span>
+              <span class="detail-value" style="font-size:1.1rem; font-weight:600; color:#f97316;">
+                {{ best_product.trust_level }}
+              </span>
+            </div>
+          </div>
+
+          <!-- View Deal CTA -->
+          <div style="display:flex; gap:1rem;">
+            {% if best_product.product_url %}
+            <a href="{{ best_product.product_url }}" class="buy-btn" target="_blank" rel="noopener noreferrer"
+              style="flex:1; text-align:center; padding:1rem; border-radius:12px; background:linear-gradient(135deg, #a855f7, #ec4899); color:white; font-weight:600; text-decoration:none; transition:transform 0.2s, box-shadow 0.2s;">
+              View Deal on {{ best_product.platform }} <i class="fas fa-external-link-alt"
+                style="margin-left:5px; font-size:0.8em;"></i>
+            </a>
+            {% else %}
+            <span class="buy-btn"
+              style="flex:1; text-align:center; padding:1rem; border-radius:12px; background:rgba(255,255,255,0.1); color:rgba(255,255,255,0.5); font-weight:600; cursor:not-allowed;">Link
+              Unavailable</span>
+            {% endif %}
+            <button id="saveBtn" title="Save this product to your personal dashboard for later!"
+              style="padding:1rem 2rem; border-radius:12px; background:rgba(255,255,255,0.05); color:white; border:1px solid rgba(255,255,255,0.1); font-weight:600; cursor:pointer; transition:all 0.2s;"
+              onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+              onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+              <i class="far fa-heart" id="saveIcon" style="margin-right:8px;"></i> <span id="saveText">Save
+                Product</span>
+            </button>
+            <script>
+              document.addEventListener('DOMContentLoaded', function () {
+                const saveBtn = document.getElementById('saveBtn');
+                const icon = document.getElementById('saveIcon');
+                const text = document.getElementById('saveText');
+
+                // Use tojson to safely embed all values (handles quotes, backslashes, etc.)
+                const productName     = {{ best_product.name | tojson }};
+                const productPrice    = {{ best_product.price | tojson }};
+                const productPlatform = {{ best_product.platform | tojson }};
+                const productImage    = {{ (best_product.image or '') | tojson }};
+                const productUrl      = {{ (best_product.product_url or '') | tojson }};
+                const productScore    = {{ best_product.final_score | tojson }};
+
+                const productId = (productPlatform + '_' + productName).replace(/\s+/g, '_');
+
+                // Load state from localStorage
+                let savedProducts = JSON.parse(localStorage.getItem('savedProducts') || '{}');
+
+                if (savedProducts[productId]) {
+                  icon.classList.remove('far');
+                  icon.classList.add('fas');
+                  icon.style.color = '#ec4899';
+                  text.innerText = 'Saved!';
+                  saveBtn.style.background = 'rgba(236, 72, 153, 0.1)';
+                  saveBtn.style.borderColor = 'rgba(236, 72, 153, 0.3)';
+                }
+
+                saveBtn.addEventListener('click', function () {
+                  savedProducts = JSON.parse(localStorage.getItem('savedProducts') || '{}');
+
+                  if (icon.classList.contains('far')) {
+                    // Save
+                    icon.classList.remove('far');
+                    icon.classList.add('fas');
+                    icon.style.color = '#ec4899';
+                    text.innerText = 'Saved!';
+                    this.style.background = 'rgba(236, 72, 153, 0.1)';
+                    this.style.borderColor = 'rgba(236, 72, 153, 0.3)';
+
+                    savedProducts[productId] = {
+                      name: productName,
+                      price: productPrice,
+                      platform: productPlatform,
+                      image: productImage,
+                      url: productUrl,
+                      score: productScore,
+                      timestamp: new Date().toISOString()
+                    };
+                  } else {
+                    // Unsave
+                    icon.classList.remove('fas');
+                    icon.classList.add('far');
+                    icon.style.color = 'white';
+                    text.innerText = 'Save Product';
+                    this.style.background = 'rgba(255,255,255,0.05)';
+                    this.style.borderColor = 'rgba(255,255,255,0.1)';
+                    delete savedProducts[productId];
+                  }
+                  localStorage.setItem('savedProducts', JSON.stringify(savedProducts));
+                });
+              });
+            </script>
+          </div>
+        </div>
+
+        <!-- Why Recommended -->
+        <div class="why-recommended"
+          style="flex:1; min-width:300px; background:rgba(255,255,255,0.03); border-radius:16px; padding:1.5rem; border:1px solid rgba(255,255,255,0.05); display:flex; flex-direction:column; justify-content:center;">
+          <h3
+            style="font-size:1.1rem; font-weight:600; margin-top:0; margin-bottom:1rem; color:#fff; display:flex; align-items:center; gap:0.5rem;">
+            <i class="fas fa-magic" style="color:#a855f7;"></i> Why this is recommended?</h3>
+          <ul style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:0.8rem;">
+            <li style="display:flex; align-items:center; gap:10px;">
+              <div
+                style="width:24px; height:24px; border-radius:50%; background:rgba(52,211,153,0.2); display:flex; align-items:center; justify-content:center;">
+                <i class="fas fa-check" style="color:#34d399; font-size:0.7rem;"></i></div>
+              <span style="font-size:0.95rem; opacity:0.9;">High AI Score of <strong>{{ best_product.final_score
+                  }}</strong></span>
+            </li>
+            {% if best_product.rating >= 4.0 %}
+            <li style="display:flex; align-items:center; gap:10px;">
+              <div
+                style="width:24px; height:24px; border-radius:50%; background:rgba(52,211,153,0.2); display:flex; align-items:center; justify-content:center;">
+                <i class="fas fa-star" style="color:#fbbf24; font-size:0.7rem;"></i></div>
+              <span style="font-size:0.95rem; opacity:0.9;">High user rating ({{ best_product.rating }}/5)</span>
+            </li>
+            {% endif %}
+            {% if best_product.sentiment_label == 'Positive' %}
+            <li style="display:flex; align-items:center; gap:10px;">
+              <div
+                style="width:24px; height:24px; border-radius:50%; background:rgba(52,211,153,0.2); display:flex; align-items:center; justify-content:center;">
+                <i class="fas fa-smile" style="color:#34d399; font-size:0.7rem;"></i></div>
+              <span style="font-size:0.95rem; opacity:0.9;">Very positive review sentiment</span>
+            </li>
+            {% endif %}
+            <li style="display:flex; align-items:center; gap:10px;">
+              <div
+                style="width:24px; height:24px; border-radius:50%; background:rgba(52,211,153,0.2); display:flex; align-items:center; justify-content:center;">
+                <i class="fas fa-gem" style="color:#60a5fa; font-size:0.7rem;"></i></div>
+              <span style="font-size:0.95rem; opacity:0.9;">Excellent value for money</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- ── Full Comparison Table ───────────────────────── -->
+    <div class="table-header-row" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
+      <div class="section-heading" style="margin-bottom:0;">
+        <i class="fas fa-align-left" style="color:#6C63FF;"></i> Detailed Comparison
+      </div>
+
+      <!-- Toolbar -->
+      <div style="display:flex; gap:1rem; align-items:center;">
+        <div class="filter-group">
+          <label for="platformFilter" class="sr-only">Filter by Platform</label>
+          <select id="platformFilter" aria-label="Filter by Platform"
+            style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:white; padding:0.6rem 1rem; border-radius:8px; outline:none; font-family:inherit; cursor:pointer;">
+            <option value="all">All Platforms</option>
+            <option value="amazon">Amazon</option>
+            <option value="flipkart">Flipkart</option>
+            <option value="myntra">Myntra</option>
+
+            <option value="ajio">Ajio</option>
+            <option value="meesho">Meesho</option>
+            <option value="nykaa">Nykaa</option>
+          </select>
+        </div>
+
+        <div class="sort-group">
+          <label for="sortOption" class="sr-only">Sort Results</label>
+          <select id="sortOption" aria-label="Sort Results"
+            style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:white; padding:0.6rem 1rem; border-radius:8px; outline:none; font-family:inherit; cursor:pointer;">
+            <option value="score_desc">AI Score High to Low</option>
+            <option value="price_asc">Price Low to High</option>
+            <option value="price_desc">Price High to Low</option>
+            <option value="rating_desc">Rating High to Low</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-container">
+      <table class='product-table'>
+        <thead>
+          <tr>
+            <th style="width:50px; text-align:center;">Rank</th>
+            <th>Product</th>
+            <th>Platform</th>
+            <th>Price</th>
+            <th>Rating</th>
+            <th>Sentiment</th>
+            <th title="Calculated using normalized vectors of Price (40%), Rating (30%), and Sentiment (30%)"
+              style="cursor:help; text-decoration:underline dotted;">AI Score <i class="fas fa-info-circle"></i></th>
+            <th style="text-align:right;">Action</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          {% set min_price = products | selectattr('price') | map(attribute='price') | min | default(0) %}
+          {% set max_rating = products | map(attribute='rating') | max | default(0) %}
+          {% set max_score = products | map(attribute='final_score') | max | default(0) %}
+          {% for product in products %}
+          {% set url_lower = (product.product_url or '') | lower %}
+          {% set is_search = '/search' in url_lower or '/s?' in url_lower
+          or '?q=' in url_lower or '#q=' in url_lower
+          or '/searchb' in url_lower or 'keyword=' in url_lower %}
+          {% set is_best = best_product and product.name == best_product.name and product.platform ==
+          best_product.platform %}
+          <tr class="product-row {% if is_best %}top-row{% endif %}" data-platform="{{ product.platform | lower }}"
+            data-price="{{ product.price or 999999 }}" data-rating="{{ product.rating }}"
+            data-score="{{ product.final_score }}" data-url="{{ product.product_url | e }}"
+            title="Click row to visit {{ product.platform }}"
+            style="cursor:pointer;" role="button" tabindex="0">
+            <td style="text-align:center;">
+              {% if is_best %}
+              <span class="rank-pill" style="background:rgba(251, 191, 36, 0.2); color:#fbbf24;"><i
+                  class="fas fa-crown"></i></span>
+              {% else %}
+              <span class="rank-pill" style="background:rgba(255,255,255,0.1);">{{ loop.index }}</span>
+              {% endif %}
+            </td>
+            <td>
+              <div style="display:flex; align-items:center; gap:12px;">
+                <div style="width:40px; height:40px; background:white; border-radius:6px; padding:2px; flex-shrink:0;">
+                  <img src="{{ product.image }}"
+                    onerror="this.src='https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=400&q=80'"
+                    style="width:100%; height:100%; object-fit:contain; border-radius:4px;" alt="{{ product.name }}">
+                </div>
+                <div style="display:flex; flex-direction:column;">
+                  <span
+                    style="font-weight:600; font-size:0.95rem; color:#fff; display:-webkit-box; -webkit-line-clamp:1; line-clamp:1; -webkit-box-orient:vertical; overflow:hidden; max-width:200px;">{{
+                    product.name }}</span>
+                </div>
+              </div>
+            </td>
+            <td>
+              {% set ptag_class = 'ptag-' + product.platform | lower | replace(' ','') %}
+              <span class="platform-tag {{ ptag_class }}"><i class="fas fa-store"
+                  style="font-size:0.8em; margin-right:4px;"></i>{{ product.platform }}</span>
+            </td>
+            <td>
+              <div style="display:flex; flex-direction:column; gap:4px;">
+                <span style="font-weight:700; font-size:1.05rem; color:#34d399; white-space:nowrap;">
+                  {% if product.price %}
+                  <i class="fas fa-rupee-sign" style="font-size:0.8em; opacity:0.8;"></i>{{
+                  "{:,.0f}".format(product.price) }}
+                  {% else %}
+                  <span style="color:#f87171; font-size:0.85em;">N/A</span>
+                  {% endif %}
+                </span>
+                {% if product.price == min_price and product.price > 0 %}
+                <span
+                  style="font-size:0.65rem; background:rgba(52, 211, 153, 0.2); color:#34d399; padding:2px 6px; border-radius:10px; font-weight:600; display:inline-block; max-width:max-content;">Lowest
+                  Price</span>
+                {% endif %}
+              </div>
+            </td>
+            <td>
+              <span style="display:flex; align-items:center; gap:0.4rem; white-space:nowrap; font-weight:600;">
+                <i class="fas fa-star" style="color:#fbbf24; font-size:.85em;"></i>
+                {{ product.rating }}
+                {% if product.rating == max_rating and product.rating > 0 %}
+                <i class="fas fa-certificate" style="color:#fbbf24; font-size:0.8em; margin-left:2px;"
+                  title="Highest Rating"></i>
+                {% endif %}
+              </span>
+            </td>
+            <td>
+              <div style="display:flex; flex-direction:column; gap:2px;">
+                <span
+                  class="{{ 'positive' if product.sentiment_label=='Positive' else 'negative' if product.sentiment_label=='Negative' else 'neutral' }}"
+                  style="font-weight:600;">
+                  <i
+                    class="fas {{ 'fa-smile' if product.sentiment_label=='Positive' else 'fa-frown' if product.sentiment_label=='Negative' else 'fa-meh' }}"></i>
+                  {{ product.sentiment_label }}
+                </span>
+              </div>
+            </td>
+            <td>
+              <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-start;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span style="font-weight:700; font-size:1.1rem;">{{ product.final_score }}</span>
+                  <div class="score-bar-bg"
+                    style="width:40px; height:6px; background:rgba(255,255,255,0.1); border-radius:4px; overflow:hidden;">
+                    <div class="score-bar-fill" data-score="{{ product.final_score }}"
+                      style="width: 0%; height:100%; background:linear-gradient(90deg, #38bdf8, #818cf8); transition: width 0.8s ease-out;">
+                    </div>
+                  </div>
+                </div>
+                {% if product.final_score == max_score and product.final_score > 0 %}
+                <span
+                  style="font-size:0.65rem; background:rgba(251, 191, 36, 0.2); color:#fbbf24; padding:2px 6px; border-radius:10px; font-weight:600; display:inline-flex; align-items:center; gap:3px;"><i
+                    class="fas fa-crown" style="font-size:0.8em;"></i> Best Score</span>
+                {% endif %}
+              </div>
+            </td>
+            <td style="text-align:right;">
+              {% if product.product_url %}
+              <a href="{{ product.product_url }}" class="buy-btn" target="_blank" rel="noopener noreferrer"
+                style="white-space:nowrap; padding:0.6rem 1.2rem; border-radius:8px; display:inline-block;"
+                onclick="event.stopPropagation();">
+                View Deal
+              </a>
+              {% else %}
+              <span class="buy-btn"
+                style="white-space:nowrap; padding:0.6rem 1.2rem; border-radius:8px; background:rgba(255,255,255,0.1); color:rgba(255,255,255,0.5); display:inline-block; cursor:not-allowed;"
+                onclick="event.stopPropagation();">Unavailable</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <!-- View More Container -->
+      <div id="viewMoreContainer"
+        style="text-align:center; padding:1.5rem; background:rgba(255,255,255,0.01); border-top:1px solid rgba(255,255,255,0.05);">
+        <button id="viewMoreBtn"
+          style="background:rgba(255,255,255,0.05); color:white; border:1px solid rgba(255,255,255,0.1); padding:0.6rem 2rem; border-radius:20px; font-weight:600; cursor:pointer; transition:0.2s;">View
+          More Results <i class="fas fa-chevron-down"></i></button>
+      </div>
+    </div>
+
+  </div>
+  {% endif %}
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      /* Animate score-bar widths after page load */
+      document.querySelectorAll('.score-bar-fill').forEach(function (el) {
+        var score = parseFloat(el.getAttribute('data-score') || '0');
+        var pct = Math.min(score / 10 * 100, 100);
+        setTimeout(function () { el.style.width = pct + '%'; }, 150);
+      });
+
+      /* Sorting, Filtering and Pagination Logic */
+      const filterSelect = document.getElementById('platformFilter');
+      const sortSelect = document.getElementById('sortOption');
+      const tableBody = document.getElementById('tableBody');
+      const viewMoreBtn = document.getElementById('viewMoreBtn');
+      const viewMoreContainer = document.getElementById('viewMoreContainer');
+
+      let allRows = Array.from(document.querySelectorAll('.product-row'));
+      let visibleCount = 5;
+
+      function updateTable() {
+        const platform = filterSelect.value.toLowerCase();
+        const sortBy = sortSelect.value;
+
+        // Show tableBody loading state briefly
+        tableBody.style.opacity = '0.5';
+
+        // Filter
+        let filtered = allRows.filter(row => {
+          if (platform === 'all') return true;
+          const rowPlatform = row.getAttribute('data-platform').toLowerCase();
+          return rowPlatform.includes(platform);
+        });
+
+        // Sort
+        filtered.sort((a, b) => {
+          let aVal, bVal;
+          if (sortBy === 'price_asc') {
+            aVal = parseFloat(a.getAttribute('data-price'));
+            bVal = parseFloat(b.getAttribute('data-price'));
+            return aVal - bVal;
+          } else if (sortBy === 'price_desc') {
+            aVal = parseFloat(a.getAttribute('data-price'));
+            bVal = parseFloat(b.getAttribute('data-price'));
+            return bVal - aVal;
+          } else if (sortBy === 'rating_desc') {
+            aVal = parseFloat(a.getAttribute('data-rating'));
+            bVal = parseFloat(b.getAttribute('data-rating'));
+            return bVal - aVal;
+          } else {
+            // score_desc
+            aVal = parseFloat(a.getAttribute('data-score'));
+            bVal = parseFloat(b.getAttribute('data-score'));
+            return bVal - aVal;
+          }
+        });
+
+        // Re-attach sorted & filtered rows
+        tableBody.innerHTML = '';
+
+        if (filtered.length === 0) {
+          const emptyRow = document.createElement('tr');
+          emptyRow.innerHTML = `<td colspan="8" style="text-align:center; padding:3rem; color:var(--text-muted);">
+                <i class="fas fa-filter" style="font-size:2rem; opacity:0.2; margin-bottom:1rem; display:block;"></i>
+                No products match the selected platform filter.
+            </td>`;
+          tableBody.appendChild(emptyRow);
+        } else {
+          filtered.forEach((row, index) => {
+            // Update rank number based on sorted index
+            const rankCell = row.querySelector('td:first-child .rank-pill');
+            if (index === 0 && sortBy === 'score_desc') {
+              rankCell.innerHTML = '<i class="fas fa-crown"></i>';
+              rankCell.style.background = 'rgba(251, 191, 36, 0.2)';
+              rankCell.style.color = '#fbbf24';
+            } else {
+              rankCell.innerHTML = index + 1;
+              rankCell.style.background = 'rgba(255,255,255,0.1)';
+              rankCell.style.color = 'inherit';
+            }
+
+            if (index < visibleCount) {
+              row.style.display = '';
+            } else {
+              row.style.display = 'none';
+            }
+            tableBody.appendChild(row);
+          });
+        }
+
+        setTimeout(() => { tableBody.style.opacity = '1'; }, 100);
+
+        // Handle view more button visibility
+        if (filtered.length > visibleCount) {
+          viewMoreContainer.style.display = 'block';
+        } else {
+          viewMoreContainer.style.display = 'none';
+        }
+      }
+
+      filterSelect.addEventListener('change', () => {
+        visibleCount = 5; // Reset limit on filter
+        updateTable();
+      });
+
+      sortSelect.addEventListener('change', () => {
+        visibleCount = 5; // Reset limit on sort
+        updateTable();
+      });
+
+      if (viewMoreBtn) {
+        viewMoreBtn.addEventListener('click', () => {
+          visibleCount += 5;
+          updateTable();
+        });
+      }
+
+      // Initial Call
+      updateTable();
+
+      // Safe row click handler using data-url attribute (prevents JS injection from URLs)
+      document.querySelectorAll('.product-row').forEach(function (row) {
+        row.addEventListener('click', function (e) {
+          // Don't trigger if user clicked on a link/button inside the row
+          if (e.target.closest('a') || e.target.closest('button')) return;
+          const url = this.getAttribute('data-url');
+          if (url) window.open(url, '_blank');
+        });
+        row.addEventListener('keypress', function (e) {
+          if (e.key === 'Enter') {
+            const url = this.getAttribute('data-url');
+            if (url) window.open(url, '_blank');
+          }
+        });
+      });
+    });
+  </script>
+</body>
+
+</html>

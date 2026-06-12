@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang='en'>
+
+<head>
+  <meta charset='UTF-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+  <title>Search History | AI Recommender</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel='stylesheet' href='{{ url_for("static", filename="style.css") }}'>
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+    }
+
+    .history-card {
+      padding: 2.5rem;
+      margin-bottom: 3rem;
+    }
+
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2.5rem;
+    }
+
+    @media (max-width: 768px) {
+      .history-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+      }
+    }
+
+    .history-title {
+      font-size: 2.2rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #a855f7, #ec4899);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    /* Filter Search Input */
+    .filter-box {
+      max-width: 400px;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      display: flex;
+      padding: 0.5rem 1rem;
+      align-items: center;
+    }
+
+    .filter-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: white;
+      outline: none;
+      font-family: inherit;
+      padding-left: 0.5rem;
+    }
+
+    /* Table enhancements */
+    .table-container {
+      overflow-x: auto;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      margin-top: 1.5rem;
+    }
+
+    .history-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    .history-table th {
+      background: rgba(15, 23, 42, 0.5);
+      padding: 1.2rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .history-table td {
+      padding: 1.2rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      vertical-align: middle;
+      font-size: 0.95rem;
+    }
+
+    .history-table tbody tr {
+      transition: all 0.2s;
+    }
+
+    .history-table tbody tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .action-btn {
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: 0.2s;
+    }
+
+    .action-btn.view {
+      background: rgba(56, 189, 248, 0.1);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.2);
+    }
+
+    .action-btn.view:hover {
+      background: #38bdf8;
+      color: #060913;
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+    }
+
+    .action-btn.refresh {
+      background: rgba(168, 85, 247, 0.1);
+      color: #a855f7;
+      border: 1px solid rgba(168, 85, 247, 0.2);
+    }
+
+    .action-btn.refresh:hover {
+      background: #a855f7;
+      color: white;
+      box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);
+    }
+
+    /* Danger zone */
+    .danger-card {
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      background: rgba(239, 68, 68, 0.03);
+      padding: 2rem;
+      border-radius: 20px;
+      margin-bottom: 4rem;
+    }
+
+    .danger-title {
+      font-size: 1.2rem;
+      color: #f87171;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .danger-btn {
+      background: linear-gradient(135deg, #ef4444, #b91c1c);
+      color: white;
+      border: none;
+      padding: 0.75rem 2rem;
+      border-radius: 30px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .danger-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(239, 68, 68, 0.4);
+    }
+
+    /* Loading Overlay */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(15, 23, 42, 0.9);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 1000;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+  </style>
+</head>
+
+<body data-theme="light" class="overflow-x-hidden">
+
+  <!-- Particle Background -->
+  <div class="particle-container">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="dot-pattern"></div>
+  </div>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="nav-logo">
+      <i class="fas fa-shopping-bag text-purple"></i> AI Product <span class="text-blue">Recommender</span>
+    </div>
+    <div class="nav-links">
+      <a href="/" class="nav-link"><i class="fas fa-home"></i> Home</a>
+      <a href="/dashboard" class="nav-link"><i class="fas fa-th-large"></i> Dashboard</a>
+      <a href="/history" class="nav-link active"><i class="fas fa-history"></i> History</a>
+      <a href="/saved" class="nav-link"><i class="far fa-heart"></i> Saved</a>
+    </div>
+    <div class="nav-actions">
+      <a href="/" class="gradient-btn ripple-btn"><i class="fas fa-search"></i> New Search</a>
+      <div class="icon-circle" data-theme-toggle><i class="far fa-moon"></i></div>
+      <div class="avatar-circle">
+        <img src="https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff" alt="User Avatar">
+      </div>
+    </div>
+  </nav>
+
+  <div class="container" style="animation: fadeIn 0.8s ease-out;">
+
+    <!-- History Header -->
+    <header class="history-header">
+      <div>
+        <h1 class="history-title">Search History Logs</h1>
+        <p style="opacity: 0.7; margin-top: 0.3rem;">Recall previous product comparisons or execute forced scraper updates</p>
+      </div>
+      <!-- Dynamically filter history -->
+      <div class="filter-box">
+        <i class="fas fa-filter text-muted"></i>
+        <input type="text" id="historyFilter" class="filter-input" placeholder="Filter search queries...">
+      </div>
+    </header>
+
+    <!-- Main History List Card -->
+    <div class="history-card glass-card">
+      <h3 style="font-size: 1.25rem; font-weight:700; margin-bottom: 0.5rem;"><i class="fas fa-database text-purple" style="margin-right:8px;"></i> Search Query Database</h3>
+      <p style="font-size: 0.85rem; color: var(--text-muted); opacity: 0.7; margin-bottom: 1.5rem;">List of previously parsed shopping terms saved in SQLite</p>
+
+      {% if history %}
+        <div class="table-container">
+          <table class="history-table">
+            <thead>
+              <tr>
+                <th style="width: 5%; text-align: center;">#</th>
+                <th style="width: 25%;">Search Query</th>
+                <th style="width: 15%;">Products Scraped</th>
+                <th style="width: 18%;">Price Range</th>
+                <th style="width: 12%;">Top Rating</th>
+                <th style="width: 15%;">Date Searched</th>
+                <th style="width: 10%; text-align: right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="historyTableBody">
+              {% for item in history %}
+              <tr class="history-row" data-query="{{ item.search_query | lower }}">
+                <td style="text-align: center; color: var(--text-muted); font-weight: 600;">{{ loop.index }}</td>
+                <td>
+                  <strong style="color: inherit; font-size:1.05rem;">"{{ item.search_query }}"</strong>
+                </td>
+                <td style="font-weight: 600;">
+                  {{ item.product_count }} items
+                </td>
+                <td style="color:#34d399; font-weight: 500;">
+                  <i class="fas fa-rupee-sign" style="font-size:0.8em;"></i>{{ "{:,.0f}".format(item.min_price) }} - <i class="fas fa-rupee-sign" style="font-size:0.8em;"></i>{{ "{:,.0f}".format(item.avg_price) }} avg
+                </td>
+                <td style="color:#fbbf24; font-weight:600;">
+                  <i class="fas fa-star" style="font-size:0.85em;"></i> {{ item.max_rating }}/5
+                </td>
+                <td style="font-size: 0.85rem; color: var(--text-muted);">
+                  {{ item.last_searched }} UTC
+                </td>
+                <td style="text-align: right; white-space: nowrap;">
+                  <div style="display: inline-flex; gap: 0.5rem;">
+                    <!-- View cached (normal GET search query) -->
+                    <a href="/search?query={{ item.search_query }}" class="action-btn view" onclick="showLoading('Recalling cached results...')">
+                      <i class="fas fa-eye"></i> View
+                    </a>
+                    <!-- Recscrape (GET query with refresh=true) -->
+                    <a href="/search?query={{ item.search_query }}&refresh=true" class="action-btn refresh" onclick="showLoading('Triggering real-time scrapers...')">
+                      <i class="fas fa-sync-alt"></i> Re-Scrape
+                    </a>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <!-- Empty State -->
+        <div style="text-align:center; padding:5rem 2rem;">
+          <div style="width:80px; height:80px; background:rgba(255,255,255,0.02); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 2rem; border:1px solid rgba(255,255,255,0.05);">
+            <i class="fas fa-history" style="font-size:2.2rem; color:rgba(255,255,255,0.15);"></i>
+          </div>
+          <h4 style="font-size:1.5rem; font-weight:700; margin-bottom:0.5rem;">No searches performed yet</h4>
+          <p style="opacity:0.6; margin-bottom:2rem; max-width:450px; margin-left:auto; margin-right:auto; font-size:0.95rem;">Once you start analyzing product items, your search log dashboard will display right here.</p>
+          
+          <div class="popular-searches" style="margin: 0 auto; max-width: fit-content;">
+            <div class="search-chips" style="justify-content:center;">
+              <a href="/search?query=Smartphones" class="search-chip blue-chip" onclick="showLoading('Scraping Smartphones...')"><i class="fas fa-mobile-alt"></i> Smartphones</a>
+              <a href="/search?query=Laptops" class="search-chip purple-chip" onclick="showLoading('Scraping Laptops...')"><i class="fas fa-laptop"></i> Laptops</a>
+              <a href="/search?query=Headphones" class="search-chip pink-chip" onclick="showLoading('Scraping Headphones...')"><i class="fas fa-headphones"></i> Headphones</a>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Danger Zone Card -->
+    {% if history %}
+    <div class="danger-card glass-card">
+      <h3 class="danger-title"><i class="fas fa-exclamation-triangle"></i> Danger Zone</h3>
+      <p style="font-size: 0.9rem; opacity: 0.8; margin-bottom: 1.5rem; color: var(--text-muted);">Wipe all products and search history records completely from the SQLite database. This action is permanent and cannot be undone.</p>
+      
+      <form action="/clear_history" method="POST" onsubmit="return confirmWipe()">
+        <button type="submit" class="danger-btn">
+          <i class="fas fa-trash-alt"></i> Clear Search History Database
+        </button>
+      </form>
+    </div>
+    {% endif %}
+
+  </div>
+
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay" class="loading-overlay">
+    <div class="loader-content">
+      <div class="cube-loader">
+        <div class="cube-face cube-front"></div>
+        <div class="cube-face cube-back"></div>
+        <div class="cube-face cube-right"></div>
+        <div class="cube-face cube-left"></div>
+        <div class="cube-face cube-top"></div>
+        <div class="cube-face cube-bottom"></div>
+      </div>
+      <h2 class="loading-text" id="loadingText">Scraping e-commerce platforms...</h2>
+      <p class="loading-subtext">Executing weighted AI analytics scores</p>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="main-footer">
+    <div class="footer-links">
+      <a href="#" class="footer-link"><i class="fab fa-github"></i> GitHub</a>
+      <a href="#" class="footer-link"><i class="fas fa-file-alt"></i> Documentation</a>
+      <a href="#" class="footer-link"><i class="fas fa-info-circle"></i> About</a>
+    </div>
+    <p class="copyright">&copy; 2026 AI Product Recommender. Built for Final Year Project Showcase.</p>
+  </footer>
+
+  <script>
+    // Live filter search queries
+    const filterInput = document.getElementById('historyFilter');
+    if (filterInput) {
+      filterInput.addEventListener('input', function(e) {
+        const val = e.target.value.toLowerCase().trim();
+        const rows = document.querySelectorAll('.history-row');
+        
+        rows.forEach(row => {
+          const query = row.getAttribute('data-query');
+          if (query.includes(val)) {
+            row.style.display = '';
+          } else {
+            row.style.display = 'none';
+          }
+        });
+      });
+    }
+
+    // Loading overlay trigger
+    function showLoading(msg) {
+      document.getElementById('loadingText').innerText = msg;
+      document.getElementById('loadingOverlay').style.display = 'flex';
+    }
+
+    // Confirm database wipe
+    function confirmWipe() {
+      const confirmFirst = confirm("ARE YOU SURE you want to delete all searches and products from your database?");
+      if (!confirmFirst) return false;
+      const confirmSecond = confirm("This will permanently truncate your SQLite database storage. Continue?");
+      if (confirmSecond) {
+        showLoading("Truncating database storage logs...");
+        return true;
+      }
+      return false;
+    }
+  </script>
+  <script src='{{ url_for("static", filename="script.js") }}' defer></script>
+</body>
+</html>

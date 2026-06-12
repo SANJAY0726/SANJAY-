@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang='en'>
+
+<head>
+  <meta charset='UTF-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+  <title>Saved Products | AI Recommender</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel='stylesheet' href='{{ url_for("static", filename="style.css") }}'>
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+    }
+
+    .saved-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2.5rem;
+    }
+
+    @media (max-width: 768px) {
+      .saved-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+      }
+    }
+
+    .saved-title {
+      font-size: 2.2rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #ec4899, #f43f5e);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    /* KPI summary card block */
+    .summary-widgets {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 3rem;
+    }
+
+    .summary-card {
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      transition: 0.2s;
+    }
+
+    .summary-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+    }
+
+    .summary-card:nth-child(1) .summary-icon { color: #f43f5e; background: rgba(244, 63, 94, 0.1); }
+    .summary-card:nth-child(2) .summary-icon { color: #34d399; background: rgba(52, 211, 153, 0.1); }
+    .summary-card:nth-child(3) .summary-icon { color: #fbbf24; background: rgba(251, 191, 36, 0.1); }
+
+    /* Saved Grid */
+    .saved-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 2rem;
+      margin-bottom: 4rem;
+    }
+
+    /* Product Saved Card */
+    .saved-card {
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      position: relative;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .saved-card:hover {
+      transform: translateY(-8px);
+      border-color: rgba(236, 72, 153, 0.3);
+      box-shadow: 0 10px 30px rgba(236, 72, 153, 0.15);
+    }
+
+    .card-img-wrap {
+      height: 200px;
+      background: white;
+      padding: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .card-img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      transition: transform 0.3s;
+    }
+
+    .saved-card:hover .card-img {
+      transform: scale(1.05);
+    }
+
+    .badge-score {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: linear-gradient(135deg, #00C9FF, #92fe9d);
+      color: #060913;
+      font-weight: 800;
+      font-size: 0.8rem;
+      padding: 4px 8px;
+      border-radius: 6px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    }
+
+    .card-body {
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      justify-content: space-between;
+    }
+
+    .card-name {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: white;
+      margin: 0 0 0.8rem 0;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      line-height: 1.4;
+      min-height: 2.8rem;
+    }
+
+    .card-price-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.25rem;
+    }
+
+    .card-price {
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: #34d399;
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 0.8rem;
+      width: 100%;
+    }
+
+    .deal-link {
+      flex: 1;
+      text-align: center;
+      padding: 0.6rem;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #6C63FF, #FF6FD8);
+      color: white;
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 700;
+      transition: 0.2s;
+    }
+
+    .deal-link:hover {
+      box-shadow: 0 0 15px rgba(255, 111, 216, 0.5);
+    }
+
+    .remove-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      background: rgba(239, 68, 68, 0.1);
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .remove-btn:hover {
+      background: #ef4444;
+      color: white;
+      box-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
+    }
+
+    /* Platform color classes */
+    .ptag-amazon { background: rgba(255, 153, 0, .15); color: #ff9900; border: 1px solid rgba(255, 153, 0, .3); padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight:600; }
+    .ptag-flipkart { background: rgba(47, 116, 255, .15); color: #2f74ff; border: 1px solid rgba(47, 116, 255, .3); padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight:600; }
+    .ptag-myntra { background: rgba(255, 63, 108, .15); color: #ff3f6c; border: 1px solid rgba(255, 63, 108, .3); padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight:600; }
+
+    .ptag-ajio { background: rgba(168, 85, 247, .15); color: #a855f7; border: 1px solid rgba(168, 85, 247, .3); padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight:600; }
+    .ptag-meesho { background: rgba(217, 70, 239, .15); color: #d946ef; border: 1px solid rgba(217, 70, 239, .3); padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight:600; }
+    .ptag-nykaa { background: rgba(236, 72, 153, .15); color: #ec4899; border: 1px solid rgba(236, 72, 153, .3); padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight:600; }
+
+    /* Card fadeout animation */
+    .fade-out {
+      opacity: 0;
+      transform: scale(0.9) translateY(20px);
+      transition: all 0.4s ease-out;
+    }
+
+    .clear-all-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: white;
+      padding: 0.6rem 1.5rem;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: 0.2s;
+    }
+
+    .clear-all-btn:hover {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.3);
+      color: #f87171;
+    }
+  </style>
+</head>
+
+<body data-theme="light" class="overflow-x-hidden">
+
+  <!-- Particle Background -->
+  <div class="particle-container">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="dot-pattern"></div>
+  </div>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="nav-logo">
+      <i class="fas fa-shopping-bag text-purple"></i> AI Product <span class="text-blue">Recommender</span>
+    </div>
+    <div class="nav-links">
+      <a href="/" class="nav-link"><i class="fas fa-home"></i> Home</a>
+      <a href="/dashboard" class="nav-link"><i class="fas fa-th-large"></i> Dashboard</a>
+      <a href="/history" class="nav-link"><i class="fas fa-history"></i> History</a>
+      <a href="/saved" class="nav-link active"><i class="far fa-heart"></i> Saved</a>
+    </div>
+    <div class="nav-actions">
+      <a href="/" class="gradient-btn ripple-btn"><i class="fas fa-search"></i> New Search</a>
+      <div class="icon-circle" data-theme-toggle><i class="far fa-moon"></i></div>
+      <div class="avatar-circle">
+        <img src="https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff" alt="User Avatar">
+      </div>
+    </div>
+  </nav>
+
+  <div class="container" style="animation: fadeIn 0.8s ease-out;">
+
+    <!-- Saved Header -->
+    <header class="saved-header">
+      <div>
+        <h1 class="saved-title">Saved Products</h1>
+        <p style="opacity: 0.7; margin-top: 0.3rem;">Manage your favorite comparative deals and tracking options</p>
+      </div>
+      <button id="clearAllBtn" class="clear-all-btn" style="display: none;">
+        <i class="far fa-heart-broken"></i> Clear Saved List
+      </button>
+    </header>
+
+    <!-- Dynamic KPI Widgets -->
+    <div class="summary-widgets" id="kpiWidgets" style="display: none;">
+      <div class="summary-card glass-card">
+        <div class="kpi-info">
+          <span class="kpi-value" id="savedCount">0</span>
+          <span class="kpi-label">Saved Items</span>
+        </div>
+        <div class="summary-icon"><i class="fas fa-heart"></i></div>
+      </div>
+      <div class="summary-card glass-card">
+        <div class="kpi-info">
+          <span class="kpi-value"><i class="fas fa-rupee-sign" style="font-size:0.85em;"></i><span id="savedAvgPrice">0</span></span>
+          <span class="kpi-label">Average Value</span>
+        </div>
+        <div class="summary-icon"><i class="fas fa-chart-line"></i></div>
+      </div>
+      <div class="summary-card glass-card">
+        <div class="kpi-info">
+          <span class="kpi-value" id="savedTopPlatform">N/A</span>
+          <span class="kpi-label">Top Choice Platform</span>
+        </div>
+        <div class="summary-icon"><i class="fas fa-store"></i></div>
+      </div>
+    </div>
+
+    <!-- Product Cards Grid -->
+    <div class="saved-grid" id="savedGrid">
+      <!-- Dynamically filled by JS -->
+    </div>
+
+    <!-- Empty State (shown if no items saved) -->
+    <div class="glass-card" id="emptyState" style="text-align:center; padding:5rem 2rem; display:none; margin-bottom: 4rem;">
+      <div style="width:80px; height:80px; background:rgba(255,255,255,0.02); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 2rem; border:1px solid rgba(255,255,255,0.05);">
+        <i class="far fa-heart" style="font-size:2.2rem; color:rgba(255,255,255,0.15);"></i>
+      </div>
+      <h3 style="font-size:1.6rem; font-weight:700; margin-bottom:0.5rem; color:white;">Your saved list is empty</h3>
+      <p style="opacity:0.6; margin-bottom:2rem; max-width:450px; margin-left:auto; margin-right:auto; font-size:0.95rem;">You haven't bookmarked any product recommendations yet. Browse items and click "Save Product" to store them here!</p>
+      <a href="/" class="gradient-btn ripple-btn" style="padding:1rem 2.5rem; border-radius:30px; font-weight:700;">Find Deals Now</a>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <footer class="main-footer">
+    <div class="footer-links">
+      <a href="#" class="footer-link"><i class="fab fa-github"></i> GitHub</a>
+      <a href="#" class="footer-link"><i class="fas fa-file-alt"></i> Documentation</a>
+      <a href="#" class="footer-link"><i class="fas fa-info-circle"></i> About</a>
+    </div>
+    <p class="copyright">&copy; 2026 AI Product Recommender. Built for Final Year Project Showcase.</p>
+  </footer>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const savedGrid = document.getElementById('savedGrid');
+      const emptyState = document.getElementById('emptyState');
+      const kpiWidgets = document.getElementById('kpiWidgets');
+      const clearAllBtn = document.getElementById('clearAllBtn');
+      
+      const savedCountEl = document.getElementById('savedCount');
+      const savedAvgPriceEl = document.getElementById('savedAvgPrice');
+      const savedTopPlatformEl = document.getElementById('savedTopPlatform');
+
+      function formatPrice(p) {
+        const val = parseFloat(p);
+        if (isNaN(val)) return '0';
+        return val.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+      }
+
+      function loadSavedProducts() {
+        const saved = JSON.parse(localStorage.getItem('savedProducts') || '{}');
+        const keys = Object.keys(saved);
+        
+        if (keys.length === 0) {
+          savedGrid.style.display = 'none';
+          kpiWidgets.style.display = 'none';
+          clearAllBtn.style.display = 'none';
+          emptyState.style.display = 'block';
+          return;
+        }
+
+        // Show dashboards
+        emptyState.style.display = 'none';
+        savedGrid.style.display = 'grid';
+        kpiWidgets.style.display = 'grid';
+        clearAllBtn.style.display = 'inline-flex';
+
+        // Render products
+        savedGrid.innerHTML = '';
+        let totalVal = 0;
+        let validPriceCount = 0;
+        const platforms = {};
+
+        keys.forEach(key => {
+          const item = saved[key];
+          
+          // Aggregate price
+          const price = parseFloat(item.price);
+          if (!isNaN(price) && price > 0) {
+            totalVal += price;
+            validPriceCount++;
+          }
+
+          // Aggregate platform
+          platforms[item.platform] = (platforms[item.platform] || 0) + 1;
+
+          // Render card
+          const col = document.createElement('div');
+          col.className = 'saved-card-wrap';
+          col.id = `card_${key}`;
+          
+          const ptag = 'ptag-' + item.platform.toLowerCase().replace(/\s+/g, '');
+          
+          col.innerHTML = `
+            <div class="saved-card glass-card">
+              <div class="card-img-wrap">
+                <span class="badge-score"><i class="fas fa-robot"></i> ${item.score}</span>
+                <img class="card-img" src="${item.image}" alt="${item.name}" onerror="this.src='https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=400&q=80'">
+              </div>
+              <div class="card-body">
+                <div>
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.5rem;">
+                    <span class="${ptag}">${item.platform}</span>
+                    <span style="font-size:0.75rem; color:var(--text-muted);"><i class="far fa-clock"></i> ${new Date(item.timestamp).toLocaleDateString()}</span>
+                  </div>
+                  <h3 class="card-name" title="${item.name}">${item.name}</h3>
+                </div>
+                <div>
+                  <div class="card-price-row">
+                    <span class="card-price"><i class="fas fa-rupee-sign" style="font-size:0.85em;"></i>${formatPrice(item.price)}</span>
+                    <span style="background:rgba(236,72,153,0.1); color:#ec4899; font-size:0.75rem; font-weight:600; padding:2px 8px; border-radius:10px;">Favorite</span>
+                  </div>
+                  <div class="card-actions">
+                    <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="deal-link">
+                      View Deal <i class="fas fa-external-link-alt" style="font-size:0.8em; margin-left:3px;"></i>
+                    </a>
+                    <button class="remove-btn" title="Remove from saved" onclick="removeProduct('${key}')">
+                      <i class="fas fa-heart-broken"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+          savedGrid.appendChild(col);
+        });
+
+        // Calculate Metrics
+        savedCountEl.innerText = keys.length;
+        
+        const avg = validPriceCount > 0 ? totalVal / validPriceCount : 0;
+        savedAvgPriceEl.innerText = formatPrice(avg);
+
+        let topPlatform = 'N/A';
+        let maxCount = 0;
+        Object.keys(platforms).forEach(p => {
+          if (platforms[p] > maxCount) {
+            maxCount = platforms[p];
+            topPlatform = p;
+          }
+        });
+        savedTopPlatformEl.innerText = topPlatform;
+      }
+
+      // Remove single product trigger
+      window.removeProduct = function(key) {
+        const card = document.getElementById(`card_${key}`);
+        if (card) {
+          card.classList.add('fade-out');
+          setTimeout(() => {
+            const saved = JSON.parse(localStorage.getItem('savedProducts') || '{}');
+            delete saved[key];
+            localStorage.setItem('savedProducts', JSON.stringify(saved));
+            loadSavedProducts();
+          }, 400);
+        }
+      };
+
+      // Clear all items trigger
+      clearAllBtn.addEventListener('click', function () {
+        const confirmWipe = confirm("Are you sure you want to remove all saved items from your comparison list?");
+        if (confirmWipe) {
+          const cards = document.querySelectorAll('.saved-card-wrap');
+          cards.forEach(card => card.classList.add('fade-out'));
+          
+          setTimeout(() => {
+            localStorage.removeItem('savedProducts');
+            loadSavedProducts();
+          }, 400);
+        }
+      });
+
+      // Initialize
+      loadSavedProducts();
+    });
+  </script>
+  <script src='{{ url_for("static", filename="script.js") }}' defer></script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+# Vercel
+.vercel
+
+# Python virtual environment
+.venv/
+venv/
+env/
+ENV/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+
+# SQLite database (local data, not for production)
+*.db
+*.sqlite
+*.sqlite3
+data/*.db
+
+# IDE / Editor
+.vscode/
+.idea/
+*.suo
+*.user
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/

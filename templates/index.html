@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang='en'>
+
+<head>
+  <meta charset='UTF-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+  <title>AI Product Recommender | Smart Shopping</title>
+  <!-- FontAwesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel='stylesheet' href='{{ url_for("static", filename="style.css") }}'>
+</head>
+
+<body data-theme="light" class="overflow-x-hidden">
+
+  <!-- Particle Background -->
+  <div class="particle-container neural-canvas-container">
+    <canvas id="neuralCanvas"></canvas>
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="dot-pattern"></div>
+  </div>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="nav-logo">
+      <i class="fas fa-shopping-bag text-purple"></i> AI Product <span class="text-blue">Recommender</span>
+    </div>
+    <div class="nav-links">
+      <a href="/" class="nav-link active"><i class="fas fa-home"></i> Home</a>
+      <a href="/dashboard" class="nav-link"><i class="fas fa-th-large"></i> Dashboard</a>
+      <a href="/history" class="nav-link"><i class="fas fa-history"></i> History</a>
+      <a href="/saved" class="nav-link"><i class="far fa-heart"></i> Saved</a>
+    </div>
+    <div class="nav-actions">
+      <a href="/" class="gradient-btn ripple-btn"><i class="fas fa-search"></i> New Search</a>
+      <div class="icon-circle" data-theme-toggle><i class="far fa-moon"></i></div>
+      <div class="avatar-circle">
+        <img src="https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff" alt="User Avatar">
+      </div>
+    </div>
+  </nav>
+
+  <!-- Live Deal Ticker -->
+  {% if ticker_deals %}
+  <div class="deal-ticker" style="background: linear-gradient(90deg, #0f172a, #1e1b4b, #0f172a); border-bottom: 1px solid rgba(255,255,255,0.05); color: white; padding: 10px 0; overflow: hidden; white-space: nowrap; position: relative; z-index: 100;">
+    <div class="ticker-content" style="display: inline-block; animation: scroll-ticker 35s linear infinite;">
+      {% for deal in ticker_deals %}
+      <a href="{{ deal.product_url }}" target="_blank" class="ticker-item" style="display: inline-flex; align-items: center; margin-right: 50px; font-size: 0.85rem; font-weight: 500; color: inherit; text-decoration: none; transition: transform 0.2s ease;">
+        <img src="{{ deal.image or 'https://images.unsplash.com/photo-1523275335684-37898b6baf30' }}" onerror="this.src='https://images.unsplash.com/photo-1523275335684-37898b6baf30'" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover; margin-right: 8px; border: 1px solid rgba(255,255,255,0.2);">
+        <span style="color: var(--neon-cyan); margin-right: 5px; font-weight: 700; text-transform: uppercase; font-size: 0.75rem;">{{ deal.platform }}</span>
+        <span style="max-width: 200px; overflow: hidden; text-overflow: ellipsis;">{{ deal.name }}</span>
+        <span style="color: var(--neon-green); font-weight: 800; margin-left: 8px;">₹{{ "{:,.0f}".format(deal.price) }}</span>
+        {% if deal.discount_percent > 0 %}
+        <span style="color: var(--neon-pink); font-size: 0.7rem; font-weight: 700; background: rgba(236,72,153,0.15); padding: 2px 6px; border-radius: 4px; margin-left: 6px;">{{ deal.discount_percent|int }}% OFF</span>
+        {% endif %}
+      </a>
+      {% endfor %}
+      <!-- Duplicate for seamless scrolling -->
+      {% for deal in ticker_deals %}
+      <a href="{{ deal.product_url }}" target="_blank" class="ticker-item" style="display: inline-flex; align-items: center; margin-right: 50px; font-size: 0.85rem; font-weight: 500; color: inherit; text-decoration: none; transition: transform 0.2s ease;">
+        <img src="{{ deal.image or 'https://images.unsplash.com/photo-1523275335684-37898b6baf30' }}" onerror="this.src='https://images.unsplash.com/photo-1523275335684-37898b6baf30'" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover; margin-right: 8px; border: 1px solid rgba(255,255,255,0.2);">
+        <span style="color: var(--neon-cyan); margin-right: 5px; font-weight: 700; text-transform: uppercase; font-size: 0.75rem;">{{ deal.platform }}</span>
+        <span style="max-width: 200px; overflow: hidden; text-overflow: ellipsis;">{{ deal.name }}</span>
+        <span style="color: var(--neon-green); font-weight: 800; margin-left: 8px;">₹{{ "{:,.0f}".format(deal.price) }}</span>
+        {% if deal.discount_percent > 0 %}
+        <span style="color: var(--neon-pink); font-size: 0.7rem; font-weight: 700; background: rgba(236,72,153,0.15); padding: 2px 6px; border-radius: 4px; margin-left: 6px;">{{ deal.discount_percent|int }}% OFF</span>
+        {% endif %}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  <style>
+    @keyframes scroll-ticker {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+    .deal-ticker:hover .ticker-content {
+      animation-play-state: paused;
+    }
+    .ticker-item:hover {
+      transform: scale(1.05);
+      filter: brightness(1.2);
+    }
+  </style>
+  {% endif %}
+
+  <!-- Update Banner (What's New) -->
+  <div id="updateBanner" class="update-banner glass-card" style="display:none;">
+    <div class="update-left">
+      <strong>What's New</strong>
+      <div id="updateMessage" class="update-message">New AI scoring improvements rolled out.</div>
+    </div>
+    <div class="update-actions">
+      <button id="updateNext" class="gradient-btn small">Next</button>
+      <button id="updateDismiss" class="icon-circle" aria-label="Dismiss updates"><i class="fas fa-times"></i></button>
+    </div>
+  </div>
+
+  <div class='container main-container'>
+
+    <div class='container' style="max-width: 1200px; padding:0 2rem;">
+
+      <!-- Hero Section -->
+      <header class="hero-section">
+        <div class="hero-content">
+          <h1 class="hero-title">AI Product<br>Recommender <i class="fas fa-sparkles text-pink"
+              style="font-size:1.5rem;"></i></h1>
+          <p class="hero-subtitle">Discover the ultimate shopping experience. We instantly compare thousands of products
+            across Amazon, Flipkart, Myntra, & Meesho using advanced AI analysis.</p>
+
+          <form action='/search' method='POST' class='search-container' id='searchForm' role="search">
+            <div class="laser-scanner-line"></div>
+            <i class="fas fa-search search-icon" aria-hidden="true"></i>
+            <input type='text' name='query' class="search-input" placeholder='What are you looking for?' required
+              autocomplete="off" aria-label="Search for products">
+            <div id="suggestions" class="suggestions-dropdown"></div>
+            <button type='submit' id='searchBtn' class="gradient-btn ripple-btn search-btn"
+              aria-label="Analyze products">
+              <span id="btnText">Analyze</span>
+              <i class="fas fa-arrow-right" id="btnIcon" style="margin-left: 8px;"></i>
+              <i class="fas fa-spinner fa-spin" id="btnSpinner" style="display: none; margin-left: 8px;"></i>
+            </button>
+            <div class="search-hint">Press Enter to Search</div>
+          </form>
+
+          <div class="quick-searches mt-4" style="margin-top: 1.5rem; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; justify-content: flex-start; z-index: 10; position: relative;">
+            <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Trending:</span>
+            <a href="#" class="search-chip blue-chip" onclick="quickSearch('Smartphones')" style="padding: 0.3rem 0.8rem; font-size: 0.8rem;"><i class="fas fa-mobile-alt"></i> Smartphones</a>
+            <a href="#" class="search-chip pink-chip" onclick="quickSearch('Laptops')" style="padding: 0.3rem 0.8rem; font-size: 0.8rem;"><i class="fas fa-laptop"></i> Laptops</a>
+            <a href="#" class="search-chip green-chip" onclick="quickSearch('Sneakers')" style="padding: 0.3rem 0.8rem; font-size: 0.8rem;"><i class="fas fa-shoe-prints"></i> Sneakers</a>
+            <a href="#" class="search-chip purple-chip" onclick="quickSearch('Wireless Earbuds')" style="padding: 0.3rem 0.8rem; font-size: 0.8rem;"><i class="fas fa-headphones"></i> Earbuds</a>
+          </div>
+        </div>
+
+        <!-- Robot Mascot & Diagnostics HUD -->
+        <div class="robot-mascot-container">
+          <div class="robot-mascot-wrapper">
+            <div class="orbit-ring ring-1"></div>
+            <div class="orbit-ring ring-2"></div>
+            <div class="robot-mascot" id="robotMascot">
+              <div class="robot-antenna">
+                <div class="antenna-tip"></div>
+              </div>
+              <div class="robot-head" id="robotHead">
+                <div class="robot-ears">
+                  <div class="ear-left"></div>
+                  <div class="ear-right"></div>
+                </div>
+                <div class="robot-visor">
+                  <div class="robot-eyes" id="robotEyes">
+                    <div class="eye"></div>
+                    <div class="eye"></div>
+                  </div>
+                  <div class="scanning-beam"></div>
+                </div>
+              </div>
+              <div class="robot-neck"></div>
+              <div class="robot-torso">
+                <div class="torso-core">
+                  <div class="core-inner"></div>
+                </div>
+                <div class="torso-circuit"></div>
+              </div>
+              <div class="robot-hands">
+                <div class="hand hand-left"></div>
+                <div class="hand hand-right"></div>
+              </div>
+            </div>
+            <div class="robot-shadow"></div>
+          </div>
+
+          <!-- Diagnostic Panel -->
+          <div class="diagnostics-hud">
+            <div class="hud-header">
+              <span>System Diagnostics</span>
+              <div style="display: flex; align-items: center; gap: 0.3rem;">
+                <div class="pulse-dot"></div>
+                <span>Online</span>
+              </div>
+            </div>
+            <div class="hud-grid">
+              <div class="hud-stat">
+                <div class="hud-stat-lbl">Core Load</div>
+                <div class="hud-stat-val"><i class="fas fa-microchip text-blue" style="font-size:0.75rem;"></i> <span id="hudCoreLoad">12%</span></div>
+              </div>
+              <div class="hud-stat">
+                <div class="hud-stat-lbl">Ping Latency</div>
+                <div class="hud-stat-val"><i class="fas fa-wifi text-purple" style="font-size:0.75rem;"></i> <span id="hudPing">42ms</span></div>
+              </div>
+              <div class="hud-stat">
+                <div class="hud-stat-lbl">Scrapers</div>
+                <div class="hud-stat-val"><i class="fas fa-robot text-pink" style="font-size:0.75rem;"></i> <span>5 Ready</span></div>
+              </div>
+              <div class="hud-stat">
+                <div class="hud-stat-lbl">DB Records</div>
+                <div class="hud-stat-val"><i class="fas fa-database text-green" style="font-size:0.75rem;"></i> <span>{{ stats.total_products or 0 }}</span></div>
+              </div>
+            </div>
+            <div class="hud-terminal" id="hudTerminal">
+              <div class="terminal-line">&gt; AI core boot initialized...</div>
+              <div class="terminal-line">&gt; NLP sentiment engine: active</div>
+            </div>
+          </div>
+        </div>
+      </header>
+    </div>
+
+    <style>
+      @keyframes float {
+        0% {
+          transform: translateY(0px);
+        }
+
+        50% {
+          transform: translateY(-15px);
+        }
+
+        100% {
+          transform: translateY(0px);
+        }
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    </style>
+
+    <!-- Platform Logos -->
+    <div class="platform-logos-row">
+      <span class="platforms-label">Supported Platforms:</span>
+      <i class="fab fa-amazon text-orange" title="Amazon"></i>
+      <strong class="platform-letter text-gold serif" title="Flipkart">f</strong>
+      <strong class="platform-letter text-pink serif" title="Myntra">M</strong>
+      <strong class="platform-letter text-magenta serif" title="Meesho">m</strong>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+      <div class="loader-content">
+        <div class="cube-loader">
+          <div class="cube-face cube-front"></div>
+          <div class="cube-face cube-back"></div>
+          <div class="cube-face cube-right"></div>
+          <div class="cube-face cube-left"></div>
+          <div class="cube-face cube-top"></div>
+          <div class="cube-face cube-bottom"></div>
+        </div>
+        <h2 class="loading-text">AI is analyzing products...</h2>
+        <p class="loading-subtext">Scraping multiple platforms & calculating scores</p>
+      </div>
+    </div>
+
+    {% if error %}
+    <div class='error' style="margin-top:2rem;"><i class="fas fa-exclamation-circle"></i> {{ error }}</div>
+    {% endif %}
+  </div>
+
+  <!-- Stats Bar -->
+  <div class="stats-row">
+    <div class="stat-item">
+      <div class="stat-icon-circle bg-blue-dim text-blue"><i class="fas fa-cube"></i></div>
+      <div>
+        <div class="stat-value"><span class="stat-counter"
+            data-target="{{ stats.total_products // 1000 if stats and stats.total_products > 1000 else stats.total_products or 10 }}">{{
+            stats.total_products // 1000 if stats and stats.total_products > 1000 else 0 }}</span>{{ 'K+' if stats and
+          stats.total_products > 1000 else '' }}</div>
+        <div class="stat-label">Products Analyzed</div>
+      </div>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat-item">
+      <div class="stat-icon-circle bg-purple-dim text-purple"><i class="fas fa-chart-line"></i></div>
+      <div>
+        <div class="stat-value"><span class="stat-counter" data-target="{{ stats.total_searches or 50 }}">{{
+            stats.total_searches or 0 }}</span></div>
+        <div class="stat-label">User Searches</div>
+      </div>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat-item">
+      <div class="stat-icon-circle bg-pink-dim text-pink"><i class="fas fa-star"></i></div>
+      <div>
+        <div class="stat-value"><span class="stat-counter" data-target="{{ stats.accuracy | int if stats else 98 }}">{{
+            stats.accuracy | int if stats else 0 }}</span>%</div>
+        <div class="stat-label">Accuracy Rate</div>
+      </div>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat-item">
+      <div class="stat-icon-circle bg-green-dim text-green"><i class="fas fa-shield-alt"></i></div>
+      <div>
+        <div class="stat-value"><span class="stat-counter" data-target="5">0</span></div>
+        <div class="stat-label">Platforms Covered</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Robotic Assembly Conveyor Section -->
+  <section class="assembly-section container glass-card" style="max-width: 1200px; margin-top: 3rem;">
+    <h2 class="assembly-section-title">Robotic <span>Recommendation Assembly</span></h2>
+    <div class="assembly-line-wrapper">
+      <div class="conveyor-belt">
+        <div class="conveyor-track-lines"></div>
+      </div>
+      <div class="data-packet"></div>
+      <div class="data-packet data-packet-2"></div>
+      <div class="data-packet data-packet-3"></div>
+      <div class="data-packet data-packet-4"></div>
+
+      <div class="assembly-steps">
+        <!-- Step 1 -->
+        <div class="assembly-node" style="--glow-color: var(--neon-cyan);">
+          <div class="node-glow"></div>
+          <div class="assembly-node-icon"><i class="fas fa-search"></i></div>
+          <h3 class="assembly-node-title">1. Query Dispatched</h3>
+          <p class="assembly-node-desc">User query is parsed by our parser and transmitted to the scraping matrix.</p>
+        </div>
+        <!-- Step 2 -->
+        <div class="assembly-node" style="--glow-color: var(--neon-blue);">
+          <div class="node-glow"></div>
+          <div class="assembly-node-icon">
+            <i class="fas fa-spider"></i>
+            <div class="scraper-node-drone"><i class="fas fa-helicopter"></i></div>
+          </div>
+          <h3 class="assembly-node-title">2. Parallel Scrape</h3>
+          <p class="assembly-node-desc">Robotic web crawlers scrape deals simultaneously from 5 platforms.</p>
+        </div>
+        <!-- Step 3 -->
+        <div class="assembly-node" style="--glow-color: var(--neon-purple);">
+          <div class="node-glow"></div>
+          <div class="assembly-node-icon"><i class="fas fa-brain nlp-node-brain"></i></div>
+          <h3 class="assembly-node-title">3. Sentiment Analysis</h3>
+          <p class="assembly-node-desc">Natural Language Processing parses user reviews to calculate sentiment ratio.</p>
+        </div>
+        <!-- Step 4 -->
+        <div class="assembly-node" style="--glow-color: var(--neon-yellow);">
+          <div class="node-glow"></div>
+          <div class="assembly-node-icon">
+            <i class="fas fa-award"></i>
+            <div class="synth-node-arm"><i class="fas fa-robot"></i></div>
+          </div>
+          <h3 class="assembly-node-title">4. Synthesis Engine</h3>
+          <p class="assembly-node-desc">Scores are combined to rank products and deliver the absolute best deal.</p>
+        </div>
+      </div>
+    </div>
+    <div class="circuit-accent-line"></div>
+  </section>
+
+  <!-- Feature Cards -->
+  <div class='features-grid'>
+    <!-- Card 1 -->
+    <div class='feature-card glass-card'>
+      <div class="feature-header">
+        <div class="feature-icon-box bg-blue-gradient"><i class="fas fa-tags"></i></div>
+        <h3 class="feature-title">Cross-Platform Comparison</h3>
+      </div>
+      <p class="feature-desc">Compare prices across 5 major platforms instantly to find the best deal.</p>
+      <div class="feature-visual-blue">
+        <div class="logo-stack">
+          <div class="logo-item"><i class="fab fa-amazon text-orange"></i></div>
+          <div class="logo-item bg-gold"><strong class="serif">f</strong></div>
+          <div class="logo-item"><strong class="serif text-pink">M</strong></div>
+        </div>
+        <div class="arrow-circle"><i class="fas fa-arrow-right"></i></div>
+      </div>
+    </div>
+
+    <!-- Card 2 -->
+    <div class='feature-card glass-card'>
+      <div class="feature-header">
+        <div class="feature-icon-box bg-purple-gradient"><i class="fas fa-brain"></i></div>
+        <h3 class="feature-title">Review Analysis</h3>
+      </div>
+      <p class="feature-desc">Our NLP engine reads thousands of reviews to gauge true customer sentiment.</p>
+      <div class="feature-visual-dark">
+        <div class="stars-row">
+          <div class="stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i
+              class="fas fa-star"></i><i class="fas fa-star-half-alt"></i></div>
+          <div class="rating-num">4.5/5</div>
+        </div>
+        <div class="sentiment-bars">
+          <div class="sentiment-pill bg-green-dim text-green">Positive 89%</div>
+          <div class="sentiment-pill bg-gray-dim text-muted">Neutral 7%</div>
+          <div class="sentiment-pill bg-red-dim text-red">Negative 4%</div>
+        </div>
+        <div class="arrow-circle"><i class="fas fa-arrow-right"></i></div>
+      </div>
+    </div>
+
+    <!-- Card 3 -->
+    <div class='feature-card glass-card'>
+      <div class="feature-header">
+        <div class="feature-icon-box bg-pink-gradient"><i class="fas fa-trophy"></i></div>
+        <h3 class="feature-title">Smart Ranking</h3>
+      </div>
+      <p class="feature-desc">Products are scored based on price, rating, and sentiment to give you the absolute best
+        choice.</p>
+      <div class="podium-container">
+        <div class="podium-step step-2">2</div>
+        <div class="podium-step step-1">
+          1
+          <i class="fas fa-crown podium-crown"></i>
+        </div>
+        <div class="podium-step step-3">3</div>
+      </div>
+      <div class="arrow-circle"><i class="fas fa-arrow-right"></i></div>
+    </div>
+  </div>
+
+  <!-- Trending Deals Section -->
+  {% if top_deals %}
+  <section class="trending-deals container" style="margin-top: 2rem; margin-bottom: 4rem;">
+    <h3 class="popular-title"><i class="fas fa-bolt text-yellow animate-pulse"></i> Live AI Recommendations</h3>
+    <div class="deals-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-top: 1.5rem;">
+      {% for deal in top_deals %}
+      <div class="deal-card glass-card" style="padding: 1.5rem; display: flex; flex-direction: column; position: relative; overflow: hidden; border-radius: 16px; transition: all 0.3s ease;">
+        
+        <!-- Platform Badge -->
+        <div class="deal-badge" style="position: absolute; top: 12px; right: 12px; background: rgba(0, 242, 254, 0.12); border: 1px solid rgba(0, 242, 254, 0.3); color: var(--neon-cyan); padding: 0.25rem 0.6rem; border-radius: 20px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; z-index: 10;">
+          {{ deal.platform }}
+        </div>
+
+        <!-- Product Image Container -->
+        <div class="deal-img-container" style="width: 100%; height: 130px; border-radius: 8px; overflow: hidden; margin-bottom: 1rem; background: rgba(0, 0, 0, 0.02); display: flex; align-items: center; justify-content: center; position: relative;">
+          <img src="{{ deal.image or 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=400&q=80' }}" onerror="this.src='https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=400&q=80'" alt="{{ deal.name }}" style="max-width: 90%; max-height: 90%; object-fit: contain; transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);">
+        </div>
+
+        <!-- Product Name -->
+        <h4 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 0.6rem; line-height: 1.4; color: inherit; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; height: 2.6rem;">
+          {{ deal.name }}
+        </h4>
+
+        <!-- Rating & Reviews -->
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.8rem; font-size: 0.75rem;">
+          <span style="color: #fbbf24; font-weight: 600; display: flex; align-items: center; gap: 0.2rem;">
+            <i class="fas fa-star" style="font-size: 0.7rem;"></i> {{ deal.rating }}
+          </span>
+          <span style="color: var(--text-muted); opacity: 0.6;">({{ deal.num_reviews }} reviews)</span>
+        </div>
+
+        <!-- Price Details -->
+        <div style="display: flex; align-items: baseline; gap: 0.6rem; margin-top: auto; margin-bottom: 1.2rem;">
+          <span style="font-size: 1.3rem; font-weight: 800; color: var(--neon-green);"><i class="fas fa-rupee-sign" style="font-size: 0.95rem; margin-right: 1px;"></i>{{ "{:,.0f}".format(deal.price) }}</span>
+          {% if deal.discount_percent > 0 %}
+          <span style="text-decoration: line-through; color: var(--text-muted); opacity: 0.4; font-size: 0.8rem;"><i class="fas fa-rupee-sign" style="font-size: 0.7rem;"></i>{{ "{:,.0f}".format(deal.original_price) }}</span>
+          <span style="color: var(--neon-pink); font-size: 0.75rem; font-weight: 700; background: rgba(236, 72, 153, 0.1); padding: 0.1rem 0.4rem; border-radius: 4px;">{{ deal.discount_percent|int }}% OFF</span>
+          {% endif %}
+        </div>
+
+        <!-- Score & Action -->
+        <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 0.8rem;">
+          <span style="background: rgba(168, 85, 247, 0.12); border: 1px solid rgba(168, 85, 247, 0.3); color: var(--neon-purple); font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 6px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase;">
+            AI Score: {{ deal.final_score }}
+          </span>
+          <a href="{{ deal.product_url }}" target="_blank" class="gradient-btn ripple-btn" style="padding: 0.45rem 1rem; font-size: 0.75rem; border-radius: 8px; font-weight: 700;">
+            Buy Deal <i class="fas fa-arrow-right" style="font-size:0.6rem; margin-left: 4px;"></i>
+          </a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- Popular Searches -->
+  <div class="popular-searches">
+    <h3 class="popular-title"><i class="fas fa-fire text-orange"></i> Popular Searches</h3>
+    <div class="search-chips">
+      <a href="#" class="search-chip blue-chip" onclick="quickSearch('Smartphones')"><i class="fas fa-mobile-alt"></i>
+        Smartphones</a>
+      <a href="#" class="search-chip purple-chip" onclick="quickSearch('Laptops')"><i class="fas fa-laptop"></i>
+        Laptops</a>
+      <a href="#" class="search-chip pink-chip" onclick="quickSearch('Headphones')"><i class="fas fa-headphones"></i>
+        Headphones</a>
+      <a href="#" class="search-chip green-chip" onclick="quickSearch('Watches')"><i class="far fa-clock"></i>
+        Watches</a>
+      <a href="#" class="search-chip gold-chip" onclick="quickSearch('Shoes')"><i class="fas fa-shoe-prints"></i>
+        Shoes</a>
+      <a href="#" class="search-chip gray-chip">View All <i class="fas fa-arrow-right"></i></a>
+    </div>
+  </div>
+  <!-- CTA Section -->
+  <section class="cta-section glass-card">
+    <h2 class="cta-title">Ready to find the best deals?</h2>
+    <p class="cta-subtitle">Stop overpaying. Start comparing instantly with our AI-powered engine across 5 platforms.
+    </p>
+    <button class="gradient-btn ripple-btn cta-btn" onclick="scrollToSearch()">
+      Start Comparing Now
+    </button>
+  </section>
+
+  </div>
+
+  <!-- Footer -->
+  <footer class="main-footer">
+    <div class="footer-links">
+      <a href="#" class="footer-link"><i class="fab fa-github"></i> GitHub</a>
+      <a href="#" class="footer-link"><i class="fas fa-file-alt"></i> Documentation</a>
+      <a href="#" class="footer-link"><i class="fas fa-info-circle"></i> About</a>
+    </div>
+    <p class="copyright">&copy; 2026 AI Product Recommender. Built for Final Year Project.</p>
+  </footer>
+
+  <script>
+    const form = document.getElementById('searchForm');
+    const btnText = document.getElementById('btnText');
+    const btnIcon = document.getElementById('btnIcon');
+    const btnSpinner = document.getElementById('btnSpinner');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const searchInput = document.querySelector('.search-input');
+    const suggestionsBox = document.getElementById('suggestions');
+
+    // Ripple Effect
+    document.querySelectorAll('.ripple-btn').forEach(button => {
+      button.addEventListener('click', function (e) {
+        let x = e.clientX - e.target.getBoundingClientRect().left;
+        let y = e.clientY - e.target.getBoundingClientRect().top;
+        let ripple = document.createElement('span');
+        ripple.className = 'ripple';
+        ripple.style.left = x + 'px';
+        ripple.style.top = y + 'px';
+        this.appendChild(ripple);
+        setTimeout(() => { ripple.remove(); }, 600);
+      });
+    });
+
+    function scrollToSearch() {
+      searchInput.focus();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function quickSearch(val) {
+      searchInput.value = val;
+      form.submit();
+    }
+
+    form.addEventListener('submit', () => {
+      btnText.innerText = 'Analyzing...';
+      btnIcon.style.display = 'none';
+      btnSpinner.style.display = 'inline-block';
+      loadingOverlay.style.display = 'flex';
+    });
+
+    // Search Suggestions
+    const mockSuggestions = ["iPhone 15 Pro", "MacBook Air M2", "Sony XM5 Headphones", "Nike Running Shoes", "Samsung S23 Ultra"];
+
+    searchInput.addEventListener('input', (e) => {
+      const val = e.target.value.toLowerCase();
+      if (val.length > 2) {
+        const filtered = mockSuggestions.filter(s => s.toLowerCase().includes(val));
+        if (filtered.length > 0) {
+          suggestionsBox.innerHTML = filtered.map(s => `<div class="suggestion-item"><i class="fas fa-search"></i> ${s}</div>`).join('');
+          suggestionsBox.style.display = 'block';
+
+          document.querySelectorAll('.suggestion-item').forEach(item => {
+            item.addEventListener('click', () => {
+              searchInput.value = item.innerText.trim();
+              suggestionsBox.style.display = 'none';
+              form.submit();
+            });
+          });
+        } else {
+          suggestionsBox.style.display = 'none';
+        }
+      } else {
+        suggestionsBox.style.display = 'none';
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!form.contains(e.target)) suggestionsBox.style.display = 'none';
+    });
+
+    // Typing effect for placeholder
+    const placeholders = [
+      "What are you looking for?",
+      "Search 'iPhone 15 Pro'",
+      "Search 'Sony Noise Cancelling'",
+      "Find the best price for 'MacBook Air'"
+    ];
+    let pIdx = 0, charIdx = 0, isDeleting = false;
+
+    function typeEffect() {
+      const currentText = placeholders[pIdx];
+      searchInput.setAttribute('placeholder', isDeleting ? currentText.substring(0, charIdx - 1) : currentText.substring(0, charIdx + 1));
+      charIdx = isDeleting ? charIdx - 1 : charIdx + 1;
+
+      let speed = isDeleting ? 30 : 50;
+      if (!isDeleting && charIdx === currentText.length) { speed = 2000; isDeleting = true; }
+      else if (isDeleting && charIdx === 0) { isDeleting = false; pIdx = (pIdx + 1) % placeholders.length; speed = 500; }
+      setTimeout(typeEffect, speed);
+    }
+    setTimeout(typeEffect, 1000);
+
+    // Number count-up animation
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.stat-counter').forEach(counter => {
+        const target = +counter.getAttribute('data-target');
+        const updateCount = () => {
+          const c = +counter.innerText;
+          if (c < target) {
+            counter.innerText = Math.ceil(c + target / 50);
+            setTimeout(updateCount, 30);
+          } else { counter.innerText = target; }
+        };
+        updateCount();
+      });
+    });
+
+    // --- NEURAL NETWORK PARTICLES CANVAS ---
+    const canvas = document.getElementById('neuralCanvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+    let mouse = { x: null, y: null, radius: 140 };
+
+    function resizeCanvas() {
+      if (!canvas) return;
+      canvas.width = canvas.parentElement.offsetWidth;
+      canvas.height = canvas.parentElement.offsetHeight;
+      initParticles();
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    class Particle {
+      constructor() {
+        this.x = Math.random() * canvas.width;
+        this.y = Math.random() * canvas.height;
+        this.vx = (Math.random() - 0.5) * 0.5;
+        this.vy = (Math.random() - 0.5) * 0.5;
+        this.size = Math.random() * 2 + 1;
+      }
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+        if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+
+        if (mouse.x !== null && mouse.y !== null) {
+          let dx = mouse.x - this.x;
+          let dy = mouse.y - this.y;
+          let dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < mouse.radius) {
+            let force = (mouse.radius - dist) / mouse.radius;
+            this.x -= dx * force * 0.02;
+            this.y -= dy * force * 0.02;
+          }
+        }
+      }
+      draw() {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0, 242, 254, 0.4)';
+        ctx.fill();
+      }
+    }
+
+    function initParticles() {
+      particles = [];
+      const numParticles = Math.min(50, Math.floor((canvas.width * canvas.height) / 15000));
+      for (let i = 0; i < numParticles; i++) {
+        particles.push(new Particle());
+      }
+    }
+
+    function animateParticles() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      particles.forEach(p => {
+        p.update();
+        p.draw();
+      });
+
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          let dx = particles[i].x - particles[j].x;
+          let dy = particles[i].y - particles[j].y;
+          let dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 100) {
+            ctx.beginPath();
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.strokeStyle = `rgba(0, 242, 254, ${0.12 * (1 - dist / 100)})`;
+            ctx.lineWidth = 0.6;
+            ctx.stroke();
+          }
+        }
+        if (mouse.x !== null && mouse.y !== null) {
+          let dx = particles[i].x - mouse.x;
+          let dy = particles[i].y - mouse.y;
+          let dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < mouse.radius) {
+            ctx.beginPath();
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(mouse.x, mouse.y);
+            ctx.strokeStyle = `rgba(236, 72, 153, ${0.15 * (1 - dist / mouse.radius)})`;
+            ctx.lineWidth = 0.8;
+            ctx.stroke();
+          }
+        }
+      }
+      requestAnimationFrame(animateParticles);
+    }
+
+    // Capture mouse coordinate relative to canvas parent container
+    const neuralContainer = document.querySelector('.neural-canvas-container');
+    if (neuralContainer) {
+      neuralContainer.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        mouse.x = e.clientX - rect.left;
+        mouse.y = e.clientY - rect.top;
+      });
+      neuralContainer.addEventListener('mouseleave', () => {
+        mouse.x = null;
+        mouse.y = null;
+      });
+    }
+
+    // Initialize Canvas
+    resizeCanvas();
+    animateParticles();
+
+
+    // --- ROBOT MASCOT INTERACTIVE VISOR ---
+    const robotHead = document.getElementById('robotHead');
+    const robotEyes = document.getElementById('robotEyes');
+
+    if (robotHead && robotEyes) {
+      window.addEventListener('mousemove', (e) => {
+        const rect = robotHead.getBoundingClientRect();
+        const headX = rect.left + rect.width / 2;
+        const headY = rect.top + rect.height / 2;
+
+        const angle = Math.atan2(e.clientY - headY, e.clientX - headX);
+        const maxOffset = 6;
+        const offsetX = Math.cos(angle) * maxOffset;
+        const offsetY = Math.sin(angle) * maxOffset;
+
+        // Apply interactive offset
+        robotEyes.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+        
+        // Slight rotation clamp
+        const angleDeg = angle * 180 / Math.PI;
+        let rot = angleDeg * 0.05;
+        if (rot > 6) rot = 6;
+        if (rot < -6) rot = -6;
+        robotHead.style.transform = `rotate(${rot}deg) translate(${offsetX * 0.3}px, ${offsetY * 0.3}px)`;
+      });
+    }
+
+
+    // --- DIAGNOSTICS HUD WRITER ---
+    const terminal = document.getElementById('hudTerminal');
+    const logStatements = [
+      "Deploying scraping matrix drones...",
+      "Querying Amazon product catalogs...",
+      "Scanning Flipkart product entries...",
+      "Mapping Meesho deal channels...",
+      "Natural Language review parsing active...",
+      "Calculating recommendation indicators...",
+      "Syncing search ledger caches...",
+      "Database status: active (cached index).",
+      "Network throughput: 920 Mbps (Normal)",
+      "Ready to scrape Amazon, Flipkart, Myntra...",
+      "System core temperature: 38°C (Cool)"
+    ];
+
+    let statementIdx = 0;
+
+    function addTerminalLog() {
+      if (!terminal) return;
+
+      const line = document.createElement('div');
+      line.className = 'terminal-line';
+      line.innerText = `> `;
+      terminal.appendChild(line);
+
+      while (terminal.childNodes.length > 4) {
+        terminal.removeChild(terminal.firstChild);
+      }
+
+      const text = logStatements[statementIdx];
+      statementIdx = (statementIdx + 1) % logStatements.length;
+
+      let charIdx = 0;
+      function typeChar() {
+        if (charIdx < text.length) {
+          line.innerText = `> ` + text.substring(0, charIdx + 1);
+          charIdx++;
+          setTimeout(typeChar, 35);
+        }
+      }
+      typeChar();
+
+      // Fluctuate dashboard stats
+      const coreLoad = Math.floor(Math.random() * 18) + 8;
+      const ping = Math.floor(Math.random() * 25) + 35;
+      const coreVal = document.getElementById('hudCoreLoad');
+      const pingVal = document.getElementById('hudPing');
+      if (coreVal) coreVal.innerText = `${coreLoad}%`;
+      if (pingVal) pingVal.innerText = `${ping}ms`;
+
+      setTimeout(addTerminalLog, 4800);
+    }
+    
+    // Trigger logs after initial delay
+    setTimeout(addTerminalLog, 1800);
+
+
+
+    // --- UPDATE BANNER ROTATION ---
+    const updates = [
+      { id: 'v1.3', text: 'Improved AI scoring model for price-sensitivity.' },
+      { id: 'v1.2', text: 'Faster scraping across Flipkart and Meesho.' },
+      { id: 'v1.1', text: 'Added product image lazy-loading and better cards.' }
+    ];
+    const currentRelease = updates[0].id;
+    const updateBanner = document.getElementById('updateBanner');
+    const updateMessage = document.getElementById('updateMessage');
+    const updateNext = document.getElementById('updateNext');
+    const updateDismiss = document.getElementById('updateDismiss');
+    let uIdx = 0;
+
+    function showUpdateIfNeeded() {
+      const seen = localStorage.getItem('seen-update-id');
+      if (seen !== currentRelease) {
+        uIdx = 0;
+        updateMessage.innerText = updates[uIdx].text;
+        updateBanner.style.display = 'flex';
+      }
+    }
+
+    if (updateNext) updateNext.addEventListener('click', () => {
+      uIdx = (uIdx + 1) % updates.length;
+      updateMessage.innerText = updates[uIdx].text;
+    });
+
+    if (updateDismiss) updateDismiss.addEventListener('click', () => {
+      updateBanner.style.display = 'none';
+      localStorage.setItem('seen-update-id', currentRelease);
+    });
+
+    // show banner shortly after load
+    setTimeout(showUpdateIfNeeded, 1200);
+  </script>
+  <script src='{{ url_for("static", filename="script.js") }}' defer></script>
+</body>
+
+</html>
