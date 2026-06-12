@@ -1,5 +1,6 @@
 # app.py
 # Main Flask web application
+# (Triggering verification commit for Vercel auto-deploy)
 
 from flask import Flask, render_template, request, redirect, url_for
 from scraper import collect_products
