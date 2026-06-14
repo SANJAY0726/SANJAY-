@@ -6,3 +6,4 @@ textblob==0.18.0.post0
 nltk==3.8.1
 SQLAlchemy==2.0.29
 lxml==5.2.1
+gunicorn==21.2.0
